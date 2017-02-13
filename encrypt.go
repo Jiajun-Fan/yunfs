@@ -13,64 +13,70 @@ const (
 )
 
 type Cipher interface {
-	Decrypt(key string, reader io.ReadCloser)
-	Encrypt(key string, reader io.ReadCloser)
+	Decrypt(key string, reader io.Reader)
+	Encrypt(key string, reader io.Reader)
+	io.Reader
 }
 
 type AesCipher struct {
 	key    [kAesBlockSize]byte
-	reader io.ReadCloser
+	reader io.Reader
 	iv     [kAesBlockSize]byte
 	mode   cipher.BlockMode
+	retIV  bool
 }
 
-func (ac *AesCipher) Decrypt(key []byte, reader io.ReadCloser) error {
+func (ac AesCipher) Decrypt(key []byte, reader io.Reader) error {
 	return ac.init(true, key, reader)
 }
 
-func (ac *AesCipher) Encrypt(key []byte, reader io.ReadCloser) error {
+func (ac AesCipher) Encrypt(key []byte, reader io.Reader) error {
 	return ac.init(false, key, reader)
 }
 
-func (ac *AesCipher) init(dec bool, key []byte, reader io.ReadCloser) error {
+func (ac AesCipher) init(dec bool, key []byte, reader io.Reader) error {
 	ac.reader = reader
-	i := 0
 
 	if len(key) > kAesBlockSize {
 		return errors.New(fmt.Sprintf("key size must not larger than %d", kAesBlockSize))
 	}
 	copy(ac.key[:], key)
+	println(len(ac.key[:]))
+	println(len(ac.iv[:]))
 
 	block, err := aes.NewCipher(ac.key[:])
 	if err != nil {
 		return err
 	}
 
-	for {
-		if i >= kAesBlockSize {
-			break
-		}
-		bs, err := ac.reader.Read(ac.iv[i:])
-		if err != nil {
-			if err == io.EOF {
-				err = errors.New("not enought bytes for IV")
-			}
-			return err
-		}
-		i += bs
-	}
-	if i != kAesBlockSize {
-		panic("reader error")
-	}
 	if dec {
+		i := 0
+		for {
+			if i >= kAesBlockSize {
+				break
+			}
+			bs, err := ac.reader.Read(ac.iv[i:])
+			if err != nil {
+				if err == io.EOF {
+					err = errors.New("not enought bytes for IV")
+				}
+				return err
+			}
+			i += bs
+		}
+		if i != kAesBlockSize {
+			panic("reader error")
+		}
 		ac.mode = cipher.NewCBCDecrypter(block, ac.iv[:])
 	} else {
+		copy(ac.iv[:], RandStringBytes(kAesBlockSize))
+		ac.retIV = true
 		ac.mode = cipher.NewCBCEncrypter(block, ac.iv[:])
 	}
 	return nil
 }
 
-func (ac *AesCipher) Read(output []byte) (int, error) {
+func (ac AesCipher) Read(output []byte) (int, error) {
 	size := len(output)
 	buff := make([]byte, size)
 
@@ -82,14 +88,20 @@ func (ac *AesCipher) Read(output []byte) (int, error) {
 		if i >= size {
 			break
 		}
-		bs, err := ac.reader.Read(buff[i:])
-		if err != nil {
-			if err == io.EOF {
-				break
+		if ac.retIV {
+			copy(buff[i:i+kAesBlockSize], ac.iv[:])
+			i += kAesBlockSize
+			ac.retIV = false
+		} else {
+			bs, err := ac.reader.Read(buff[i:])
+			if err != nil {
+				if err == io.EOF {
+					break
+				}
+				return 0, err
 			}
-			return 0, err
+			i += bs
 		}
-		i += bs
 	}
 	if i != size {
 		panic("reader error")
@@ -98,8 +110,4 @@ func (ac *AesCipher) Read(output []byte) (int, error) {
 	i = (i + kAesBlockSize - 1) / kAesBlockSize * kAesBlockSize
 	ac.mode.CryptBlocks(output[:i], buff[:i])
 	return i, nil
-}
-
-func (ac *AesCipher) Close() error {
-	return ac.reader.Close()
 }

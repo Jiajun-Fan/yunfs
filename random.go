@@ -2,12 +2,12 @@ package main
 
 import "math/rand"
 
-var letterRunes = []rune("01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var kRandLetters = []byte("01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
-func RandStringRunes(n int) string {
-	b := make([]rune, n)
+func RandStringBytes(n int) []byte {
+	b := make([]byte, n)
 	for i := range b {
-		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+		b[i] = kRandLetters[rand.Intn(len(kRandLetters))]
 	}
-	return string(b)
+	return b
 }
