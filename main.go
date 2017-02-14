@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"fmt"
 )
 
 func main() {
@@ -17,6 +18,6 @@ func main() {
 	if err != nil {
 		Fatal(err.Error())
 	}
-	println(buff)
+	fmt.Printf("%s", string(buff))
 	println(n)
 }
