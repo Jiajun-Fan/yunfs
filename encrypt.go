@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	kAesBlockSize = 32
+	kAesBlockSize = 16
 )
 
 type Cipher interface {
-	Decrypt(key string, reader io.Reader)
-	Encrypt(key string, reader io.Reader)
+	Decrypt(key string, reader io.Reader) error
+	Encrypt(key string, reader io.Reader) error
 	io.Reader
 }
 
@@ -26,15 +26,15 @@ type AesCipher struct {
 	retIV  bool
 }
 
-func (ac AesCipher) Decrypt(key []byte, reader io.Reader) error {
+func (ac *AesCipher) Decrypt(key []byte, reader io.Reader) error {
 	return ac.init(true, key, reader)
 }
 
-func (ac AesCipher) Encrypt(key []byte, reader io.Reader) error {
+func (ac *AesCipher) Encrypt(key []byte, reader io.Reader) error {
 	return ac.init(false, key, reader)
 }
 
-func (ac AesCipher) init(dec bool, key []byte, reader io.Reader) error {
+func (ac *AesCipher) init(dec bool, key []byte, reader io.Reader) error {
 	ac.reader = reader
 
 	if len(key) > kAesBlockSize {
