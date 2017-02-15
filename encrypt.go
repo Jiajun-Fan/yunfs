@@ -30,15 +30,15 @@ type AesCipherData struct {
 	RetIV bool
 }
 
-func (ac *AesCipher) Decrypt(key []byte, reader io.Reader) error {
+func (ac AesCipher) Decrypt(key []byte, reader io.Reader) error {
 	return ac.init(true, key, reader)
 }
 
-func (ac *AesCipher) Encrypt(key []byte, reader io.Reader) error {
+func (ac AesCipher) Encrypt(key []byte, reader io.Reader) error {
 	return ac.init(false, key, reader)
 }
 
-func (ac *AesCipher) init(dec bool, key []byte, reader io.Reader) error {
+func (ac AesCipher) init(dec bool, key []byte, reader io.Reader) error {
 	ac.data = &AesCipherData{}
 
 	ac.reader = reader
