@@ -18,6 +18,6 @@ func main() {
 	if err != nil {
 		Fatal(err.Error())
 	}
-	fmt.Printf("%s", string(buff))
+	fmt.Printf("%s\n", string(buff))
 	println(n)
 }
