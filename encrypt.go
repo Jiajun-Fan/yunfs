@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
@@ -8,114 +9,185 @@ import (
 	"io"
 )
 
-const (
-	kAesBlockSize = 16
-)
-
-type Cipher interface {
-	Decrypt(key string, reader io.Reader) error
-	Encrypt(key string, reader io.Reader) error
-	io.Reader
+type Decryptor interface {
+	io.ReadCloser
 }
 
-type AesCipher struct {
-	reader io.Reader
-	data   *AesCipherData
+type Encryptor interface {
+	io.WriteCloser
 }
 
-type AesCipherData struct {
-	Key   [kAesBlockSize]byte
-	IV    [kAesBlockSize]byte
-	Mode  cipher.BlockMode
-	RetIV bool
+type AesDecryptor struct {
+	Reader io.Reader
+	Key    [aes.BlockSize]byte
+	IV     [aes.BlockSize]byte
+	Mode   cipher.BlockMode
+	Buffer bytes.Buffer
 }
 
-func (ac *AesCipher) Decrypt(key []byte, reader io.Reader) error {
-	return ac.init(true, key, reader)
+type AesEncryptor struct {
+	Writer io.Writer
+	Key    [aes.BlockSize]byte
+	IV     [aes.BlockSize]byte
+	Mode   cipher.BlockMode
+	Buffer bytes.Buffer
+	IvDone bool
 }
 
-func (ac *AesCipher) Encrypt(key []byte, reader io.Reader) error {
-	return ac.init(false, key, reader)
-}
-
-func (ac *AesCipher) init(dec bool, key []byte, reader io.Reader) error {
-	ac.data = &AesCipherData{}
-
-	ac.reader = reader
-
-	if len(key) > kAesBlockSize {
-		return errors.New(fmt.Sprintf("key size must not larger than %d", kAesBlockSize))
+func NewAesDecryptor(key []byte, reader io.Reader) (Decryptor, error) {
+	dec := &AesDecryptor{}
+	dec.Reader = reader
+	if len(key) > aes.BlockSize {
+		return nil, errors.New(fmt.Sprintf("key size must not larger than %d", aes.BlockSize))
 	}
-	copy(ac.data.Key[:], key)
+	copy(dec.Key[:], key)
 
-	block, err := aes.NewCipher(ac.data.Key[:])
+	block, err := aes.NewCipher(dec.Key[:])
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	if dec {
-		i := 0
-		for {
-			if i >= kAesBlockSize {
-				break
-			}
-			bs, err := ac.reader.Read(ac.data.IV[i:])
-			if err != nil {
-				if err == io.EOF {
-					err = errors.New("not enought bytes for IV")
-				}
-				return err
-			}
-			i += bs
-		}
-		if i != kAesBlockSize {
-			panic("reader error")
-		}
-		ac.data.Mode = cipher.NewCBCDecrypter(block, ac.data.IV[:])
-	} else {
-		copy(ac.data.IV[:], RandStringBytes(kAesBlockSize))
-		ac.data.RetIV = true
-		ac.data.Mode = cipher.NewCBCEncrypter(block, ac.data.IV[:])
-	}
-	return nil
-}
-
-func (ac AesCipher) Read(output []byte) (int, error) {
-	size := len(output)
-	buff := make([]byte, size)
 
 	i := 0
-	if i%kAesBlockSize != 0 {
-		return 0, errors.New(fmt.Sprintf("output buff size must be multiple of %d", kAesBlockSize))
+	for {
+		if i >= aes.BlockSize {
+			break
+		}
+		bs, err := dec.Reader.Read(dec.IV[i:])
+		if err != nil {
+			if err == io.EOF {
+				err = errors.New("not enought bytes for IV")
+			}
+			return nil, err
+		}
+		i += bs
 	}
+	if i != aes.BlockSize {
+		panic("reader error")
+	}
+	dec.Mode = cipher.NewCBCDecrypter(block, dec.IV[:])
+
+	return dec, nil
+}
+
+func NewAesEncryptor(key []byte, writer io.Writer) (Encryptor, error) {
+	enc := &AesEncryptor{}
+	enc.Writer = writer
+	if len(key) > aes.BlockSize {
+		return nil, errors.New(fmt.Sprintf("key size must not larger than %d", aes.BlockSize))
+	}
+	copy(enc.Key[:], key)
+
+	block, err := aes.NewCipher(enc.Key[:])
+	if err != nil {
+		return nil, err
+	}
+
+	copy(enc.IV[:], RandStringBytes(aes.BlockSize))
+	enc.Mode = cipher.NewCBCEncrypter(block, enc.IV[:])
+	return enc, nil
+}
+
+func (dec *AesDecryptor) Read(output []byte) (int, error) {
+
+	readSize := (len(output) / aes.BlockSize * aes.BlockSize) - dec.Buffer.Len()
+	readBuff := make([]byte, readSize)
+
+	var errRet error
+	i := 0
+	for {
+		if i >= readSize {
+			break
+		}
+		bs, err := dec.Reader.Read(readBuff[i:])
+		if err != nil {
+			if err == io.EOF {
+				errRet = err
+				break
+			}
+			// return any error other than io.EOF
+			return 0, err
+		}
+		if bs == 0 {
+			// if currently there is no available byte, return without blocking the process
+			break
+		}
+		i += bs
+	}
+
+	if i > readSize {
+		panic("reader error")
+	}
+
+	// ignore error as the error returned bytes.Buffer is always nil
+	dec.Buffer.Write(readBuff[:i])
+
+	decSize := dec.Buffer.Len() / aes.BlockSize * aes.BlockSize
+	decBuff := make([]byte, decSize)
+	dec.Buffer.Read(decBuff)
+
+	dec.Mode.CryptBlocks(output[:decSize], decBuff)
+	if decSize != 0 {
+		return decSize, nil
+	} else {
+		return 0, errRet
+	}
+}
+
+func (dec *AesDecryptor) Close() (err error) {
+	if dec.Buffer.Len() != 0 {
+		err = errors.New("There is unread bytes in buffer")
+	}
+	return
+}
+
+func (enc *AesEncryptor) write(input []byte) (int, error) {
+	size := len(input)
+	i := 0
 	for {
 		if i >= size {
 			break
 		}
-		if ac.data.RetIV {
-			copy(buff[i:i+kAesBlockSize], ac.data.IV[:])
-			i += kAesBlockSize
-			ac.data.RetIV = false
-		} else {
-			bs, err := ac.reader.Read(buff[i:])
-			if err != nil {
-				if err == io.EOF {
-					break
-				}
-				return 0, err
-			}
-			i += bs
+		bs, err := enc.Writer.Write(input[i:])
+		if err != nil {
+			return 0, err
 		}
-	}
-	if i > size {
-		panic("reader error")
+		i += bs
 	}
 
-	i = (i + kAesBlockSize - 1) / kAesBlockSize * kAesBlockSize
-	ac.data.Mode.CryptBlocks(output[:i], buff[:i])
-	if i != 0 {
-		return i, nil
-	} else {
-		return 0, io.EOF
+	if i > size {
+		panic("writer error")
 	}
+	return i, nil
+}
+
+func (enc *AesEncryptor) Write(input []byte) (int, error) {
+
+	enc.Buffer.Write(input)
+	encSize := enc.Buffer.Len() / aes.BlockSize * aes.BlockSize
+	encBuff := make([]byte, encSize)
+	readBuff := make([]byte, encSize)
+
+	enc.Buffer.Read(readBuff)
+
+	enc.Mode.CryptBlocks(encBuff, readBuff)
+
+	if !enc.IvDone {
+		_, err := enc.write(enc.IV[:])
+		if err != nil {
+			return 0, err
+		}
+		enc.IvDone = true
+	}
+
+	return enc.write(encBuff)
+}
+
+func (enc *AesEncryptor) Close() (err error) {
+	if enc.Buffer.Len() >= aes.BlockSize {
+		panic("there is too much unwritten bytes")
+	} else {
+		buff := make([]byte, aes.BlockSize-enc.Buffer.Len())
+		_, err = enc.Write(buff)
+	}
+	return
 }
