@@ -1,21 +1,30 @@
 package main
 
 import (
-	"strings"
+	"bytes"
 	"fmt"
 )
 
 func main() {
-	reader := strings.NewReader("This is good text!")
-	encryptor := AesCipher{}
-	encryptor.Encrypt([]byte(`fjj30891`), reader)
+	SetDebug(DebugDebug)
 
-	decryptor := AesCipher{}
-	decryptor.Decrypt([]byte(`fjj30891`), encryptor)
+	var network bytes.Buffer
+	enc, err := NewAesEncryptor([]byte(`abcdefg`), &network)
+	if err != nil {
+		Fatal(err.Error())
+	}
+
+	enc.Write([]byte(`this is cool  dsafasdas dfas`))
+
+	dec, err := NewAesDecryptor([]byte(`abcdefg`), &network)
+	if err != nil {
+		Fatal(err.Error())
+	}
 
 	buff := make([]byte, 4096)
-	n, err := decryptor.Read(buff)
+	n, err := dec.Read(buff)
 	if err != nil {
+		println(n)
 		Fatal(err.Error())
 	}
 	fmt.Printf("%s\n", string(buff))
