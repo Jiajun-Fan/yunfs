@@ -1,32 +1,57 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
+	"os"
 )
 
 func main() {
 	SetDebug(DebugDebug)
 
-	var network bytes.Buffer
-	enc, err := NewAesEncryptor([]byte(`abcdefg`), &network)
+	entries := make([]*Entry, 2)
+	entries[0], _ = NewFile("ok", "cool", nil)
+	entries[1], _ = NewDir("ok", "cool", nil)
+
+	wfp, err := os.Create("entries.enc")
 	if err != nil {
-		Fatal(err.Error())
+		panic("can't create file entries.enc")
 	}
 
-	enc.Write([]byte(`this is cool  dsafasdas dfas`))
-
-	dec, err := NewAesDecryptor([]byte(`abcdefg`), &network)
+	enc, err := NewAesEncryptor([]byte("abcdefg"), wfp)
 	if err != nil {
-		Fatal(err.Error())
+		panic("can't create encryptor")
 	}
 
-	buff := make([]byte, 4096)
-	n, err := dec.Read(buff)
+	err = WriteEntries(enc, entries)
 	if err != nil {
-		println(n)
-		Fatal(err.Error())
+		panic("failed to write data")
 	}
-	fmt.Printf("%s\n", string(buff))
-	println(n)
+
+	enc.Close()
+	wfp.Close()
+
+	rfp, err := os.Open("entries.enc")
+	if err != nil {
+		panic("can't open file entries.enc")
+	}
+
+	dec, err := NewAesDecryptor([]byte("abcdefg"), rfp)
+	if err != nil {
+		println(err.Error())
+		panic("can't create decryptor")
+	}
+
+	defer dec.Close()
+	defer rfp.Close()
+
+	buff := make([]*Entry, 2)
+	err = ReadEntries(dec, buff)
+	if err != nil {
+		panic(fmt.Sprintf("can't read entries %s", err.Error()))
+	}
+
+	for _, entry := range buff {
+		entry.Print()
+	}
+
 }
