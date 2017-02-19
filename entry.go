@@ -12,22 +12,22 @@ const (
 )
 
 type Entry struct {
-	Id       uint64
-	ParentId uint64
+	Id       int
+	ParentId int
 	Dir      bool
 	Name     string
 	FsName   string
 }
 
-func NewDir(id uint64, name string, fsName string, parent *Entry) (*Entry, error) {
+func NewDir(id int, name string, fsName string, parent *Entry) (*Entry, error) {
 	return newEntry(id, name, fsName, parent, true)
 }
 
-func NewFile(id uint64, name string, fsName string, parent *Entry) (*Entry, error) {
+func NewFile(id int, name string, fsName string, parent *Entry) (*Entry, error) {
 	return newEntry(id, name, fsName, parent, false)
 }
 
-func newEntry(id uint64, name string, fsName string, parent *Entry, dir bool) (*Entry, error) {
+func newEntry(id int, name string, fsName string, parent *Entry, dir bool) (*Entry, error) {
 	entry := Entry{}
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")

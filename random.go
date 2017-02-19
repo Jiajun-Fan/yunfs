@@ -2,7 +2,7 @@ package main
 
 import "math/rand"
 
-var kRandLetters = []byte("01234567890abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+var kRandLetters = []byte("01234567890abcdefghijklmnopqrstuvwxzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 func RandStringBytes(n int) []byte {
 	b := make([]byte, n)

@@ -200,3 +200,16 @@ func MakeEncryptor(config EncryptConfig, writer io.Writer) Encryptor {
 	}
 	return nil
 }
+
+func MakeDecryptor(config EncryptConfig, reader io.Reader) Decryptor {
+	if config.Type == "aes" {
+		if aes, err := NewAesDecryptor([]byte(config.Key), reader); err != nil {
+			Fatal(err.Error())
+		} else {
+			return aes
+		}
+	} else {
+		Fatal(fmt.Sprintf("decryptor type '%s' is not implemented", config.Type))
+	}
+	return nil
+}
