@@ -15,19 +15,20 @@ type Entry struct {
 	Id       int
 	ParentId int
 	Dir      bool
+	Key      string
 	Name     string
 	FsName   string
 }
 
 func NewDir(id int, name string, fsName string, parent *Entry) (*Entry, error) {
-	return newEntry(id, name, fsName, parent, true)
+	return newEntry(id, name, fsName, "", parent, true)
 }
 
-func NewFile(id int, name string, fsName string, parent *Entry) (*Entry, error) {
-	return newEntry(id, name, fsName, parent, false)
+func NewFile(id int, name string, fsName string, key string, parent *Entry) (*Entry, error) {
+	return newEntry(id, name, fsName, key, parent, false)
 }
 
-func newEntry(id int, name string, fsName string, parent *Entry, dir bool) (*Entry, error) {
+func newEntry(id int, name string, fsName string, key string, parent *Entry, dir bool) (*Entry, error) {
 	entry := Entry{}
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")
@@ -39,6 +40,7 @@ func newEntry(id int, name string, fsName string, parent *Entry, dir bool) (*Ent
 	} else {
 		entry.ParentId = parent.Id
 	}
+	entry.Key = key
 	entry.Dir = dir
 	entry.Name = name
 	entry.FsName = fsName
@@ -56,6 +58,11 @@ func WriteEntries(writer io.Writer, buff []*Entry) error {
 }
 
 func (e *Entry) Print() {
-	fmt.Printf("Id: %d, ParentId: %d, Name: %s, FsName: %s, Dir: %t\n",
-		e.Id, e.ParentId, e.Name, e.FsName, e.Dir)
+	if e.Dir {
+		fmt.Printf("[Dir]: Id: %d, ParentId: %d, Name: %s, FsName: %s\n",
+			e.Id, e.ParentId, e.Name, e.FsName)
+	} else {
+		fmt.Printf("Id: %d, ParentId: %d, Name: %s, FsName: %s, Key %s\n",
+			e.Id, e.ParentId, e.Name, e.FsName, e.Key)
+	}
 }

@@ -15,5 +15,6 @@ func main() {
 	} else {
 		fs := NewFileSystem(config)
 		fs.ReadFileEntries()
+		//fs.WriteFileEntries()
 	}
 }

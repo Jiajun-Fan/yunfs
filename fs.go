@@ -1,14 +1,13 @@
 package main
 
 import (
-	"bufio"
 	"encoding/gob"
 	"fmt"
 	"io"
-	"os"
 )
 
 const kDefaultFsNameLength = 16
+const kDefaultFsKeyLength = 16
 
 type FileSystem struct {
 	entries []*Entry
@@ -29,12 +28,15 @@ func NewFileSystem(config *Config) *FileSystem {
 	return fs
 }
 
-func (fs *FileSystem) FsFile(name string, fsName string, parent *Entry) *Entry {
+func (fs *FileSystem) FsFile(name string, fsName string, key string, parent *Entry) *Entry {
 	if fsName == "" {
 		fsName = string(RandStringBytes(kDefaultFsNameLength))
 	}
+	if key == "" {
+		key = string(RandStringBytes(kDefaultFsKeyLength))
+	}
 	fs.entryId++
-	if f, err := NewFile(fs.entryId, name, fsName, parent); err != nil {
+	if f, err := NewFile(fs.entryId, name, fsName, key, parent); err != nil {
 		panic(err.Error())
 	} else {
 		fs.entries = append(fs.entries, f)
@@ -67,6 +69,7 @@ func (fs *FileSystem) WriteFileEntries() {
 	var fp io.WriteCloser
 	var fpe Encryptor
 	var enc *gob.Encoder
+	println(len(fs.entries))
 	for i := 0; i < len(fs.entries); i++ {
 		if i%fs.config.Fs.BlockSize == 0 {
 			fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, i/fs.config.Fs.BlockSize)
@@ -78,6 +81,7 @@ func (fs *FileSystem) WriteFileEntries() {
 			}
 			fp, _ = fs.oss.Create(fName)
 			fpe = MakeEncryptor(fs.config.Enc, fp)
+			fmt.Printf("%+v\n", fs.config.Enc)
 			enc = gob.NewEncoder(fpe)
 		}
 		entry := fs.entries[i]
@@ -108,6 +112,7 @@ func (fs *FileSystem) ReadFileEntries() {
 					break
 				} else {
 					entry.Print()
+					fs.entries = append(fs.entries, entry)
 				}
 			}
 		}
