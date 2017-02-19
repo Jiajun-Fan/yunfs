@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"os"
 )
@@ -9,7 +10,11 @@ import (
 const kConfigDirName = ".yunfs"
 const kConfigFileName = "yunfs.json"
 
+var ErrorNoConfig error = errors.New("no config file found")
+
 type OssConfig struct {
+	Base string `json:"base"`
+	Type string `json:"type"`
 }
 
 type EncryptConfig struct {
@@ -19,6 +24,7 @@ type EncryptConfig struct {
 
 type FileSystemConfig struct {
 	BlockSize uint   `json:"block_size"`
+	CacheSize uint   `json:"cache_size"`
 	Prefix    string `json:"meta_prefix"`
 }
 
@@ -30,18 +36,22 @@ type Config struct {
 
 func DefaultConfig() *Config {
 	config := &Config{}
+	config.Oss.Type = "local"
+	config.Oss.Base = ""
+
 	config.Enc.Type = "aes"
 	config.Enc.Key = "abcdefg"
+
 	config.Fs.BlockSize = 1024 * 16
 	config.Fs.Prefix = "y0k99t"
 	return config
 }
 
-func NewConfig() *Config {
+func NewConfig() (*Config, error) {
 	home := os.Getenv("HOME")
 	defaultConfig := DefaultConfig()
 	if home == "" {
-		return defaultConfig
+		return defaultConfig, ErrorNoConfig
 	}
 
 	dirName := home + "/" + kConfigDirName
@@ -69,8 +79,8 @@ func NewConfig() *Config {
 			if err2 := json.Unmarshal(buff, config); err2 != nil {
 				panic(err2.Error())
 			}
-			return config
+			return config, nil
 		}
 	}
-	return defaultConfig
+	return defaultConfig, ErrorNoConfig
 }

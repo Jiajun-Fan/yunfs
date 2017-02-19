@@ -187,3 +187,16 @@ func (enc *AesEncryptor) Close() (err error) {
 	}
 	return
 }
+
+func MakeEncryptor(config EncryptConfig, writer io.Writer) Encryptor {
+	if config.Type == "aes" {
+		if aes, err := NewAesEncryptor([]byte(config.Key), writer); err != nil {
+			Fatal(err.Error())
+		} else {
+			return aes
+		}
+	} else {
+		Fatal(fmt.Sprintf("encryptor type '%s' is not implemented", config.Type))
+	}
+	return nil
+}
