@@ -1,8 +1,18 @@
 package main
 
 type FileSystem struct {
-	Root *Entry
+	entries []Entry
+	//root     *Entry
+	curIndex uint64
+	maxIndex uint64
 }
 
-func InitFileSystem() {
+func NewFileSystem() *FileSystem {
+	fs := &FileSystem{}
+	fs.maxIndex = 256 * 1024
+	fs.entries = make([]Entry, 0, fs.maxIndex)
+	return fs
+}
+
+func (fs *FileSystem) AddFile() {
 }

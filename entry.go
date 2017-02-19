@@ -8,15 +8,8 @@ import (
 )
 
 const (
-	kNewEntry = iota
-	kDeleteEntry
-)
-
-const (
 	kMaxEntryNumberInFile = 1024
 )
-
-var gMaxEntryId uint64 = 0
 
 type Entry struct {
 	Id       uint64
@@ -24,29 +17,23 @@ type Entry struct {
 	Dir      bool
 	Name     string
 	FsName   string
-	Action   int
 }
 
-func SetMaxEntryId(id uint64) {
-	gMaxEntryId = 0
+func NewDir(id uint64, name string, fsName string, parent *Entry) (*Entry, error) {
+	return newEntry(id, name, fsName, parent, true)
 }
 
-func NewDir(name string, fsName string, parent *Entry) (*Entry, error) {
-	return newEntry(name, fsName, parent, true)
+func NewFile(id uint64, name string, fsName string, parent *Entry) (*Entry, error) {
+	return newEntry(id, name, fsName, parent, false)
 }
 
-func NewFile(name string, fsName string, parent *Entry) (*Entry, error) {
-	return newEntry(name, fsName, parent, false)
-}
-
-func newEntry(name string, fsName string, parent *Entry, dir bool) (*Entry, error) {
+func newEntry(id uint64, name string, fsName string, parent *Entry, dir bool) (*Entry, error) {
 	entry := Entry{}
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")
 	}
 
-	gMaxEntryId++
-	entry.Id = gMaxEntryId
+	entry.Id = id
 	if parent == nil {
 		entry.ParentId = 0
 	} else {
@@ -55,7 +42,6 @@ func newEntry(name string, fsName string, parent *Entry, dir bool) (*Entry, erro
 	entry.Dir = dir
 	entry.Name = name
 	entry.FsName = fsName
-	entry.Action = kNewEntry
 	return &entry, nil
 }
 
@@ -70,6 +56,6 @@ func WriteEntries(writer io.Writer, buff []*Entry) error {
 }
 
 func (e *Entry) Print() {
-	fmt.Printf("Id: %d, ParentId: %d, Name: %s, FsName: %s, Dir: %t, Action: %d\n",
-		e.Id, e.ParentId, e.Name, e.FsName, e.Dir, e.Action)
+	fmt.Printf("Id: %d, ParentId: %d, Name: %s, FsName: %s, Dir: %t\n",
+		e.Id, e.ParentId, e.Name, e.FsName, e.Dir)
 }

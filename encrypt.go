@@ -9,13 +9,9 @@ import (
 	"io"
 )
 
-type Decryptor interface {
-	io.ReadCloser
-}
+type Decryptor io.ReadCloser
 
-type Encryptor interface {
-	io.WriteCloser
-}
+type Encryptor io.WriteCloser
 
 type AesDecryptor struct {
 	Reader io.Reader
