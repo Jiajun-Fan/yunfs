@@ -69,10 +69,10 @@ func (fs *FileSystem) WriteFileEntries() {
 	var fp io.WriteCloser
 	var fpe Encryptor
 	var enc *gob.Encoder
-	println(len(fs.entries))
 	for i := 0; i < len(fs.entries); i++ {
 		if i%fs.config.Fs.BlockSize == 0 {
 			fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, i/fs.config.Fs.BlockSize)
+			println(fName)
 			if fpe != nil {
 				fpe.Close()
 			}

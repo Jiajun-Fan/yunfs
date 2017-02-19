@@ -13,8 +13,11 @@ const kConfigFileName = "yunfs.json"
 var ErrorNoConfig error = errors.New("no config file found")
 
 type OssConfig struct {
-	Base string `json:"base"`
-	Type string `json:"type"`
+	Type     string `json:"type"`
+	Key      string `json:"key"`
+	Secret   string `json:"secret"`
+	Bucket   string `json:"bucket"`
+	EndPoint string `json:"end_point"`
 }
 
 type EncryptConfig struct {
@@ -37,7 +40,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	config := &Config{}
 	config.Oss.Type = "local"
-	config.Oss.Base = ""
+	config.Oss.EndPoint = ""
 
 	config.Enc.Type = "aes"
 	config.Enc.Key = "abcdefg"
