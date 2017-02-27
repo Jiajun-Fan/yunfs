@@ -11,13 +11,17 @@ const (
 	kMaxEntryNumberInFile = 1024
 )
 
+type NodeInfo struct {
+	Key      string
+	Name     string
+	FsName   string
+}
+
 type Entry struct {
 	Id       int
 	ParentId int
 	Dir      bool
-	Key      string
-	Name     string
-	FsName   string
+	NodeInfo
 }
 
 func NewDir(id int, name string, fsName string, parent *Entry) (*Entry, error) {
