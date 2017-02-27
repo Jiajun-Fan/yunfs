@@ -3,32 +3,29 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"io"
+	"github.com/petar/GoLLRB/llrb"
+	//"io"
 )
 
 const kDefaultFsNameLength = 16
 const kDefaultFsKeyLength = 16
 
 type FileSystem struct {
-	entries []*Entry
 	config  *Config
 	oss     Oss
 	entryId int
-	//root     *Entry
-	//curIndex uint64
-	//maxIndex uint64
+	tree    *llrb.LLRB
 }
 
 func NewFileSystem(config *Config) *FileSystem {
 	fs := &FileSystem{}
 	fs.config = config
 	fs.oss = MakeOss(config.Oss)
-	//fs.maxIndex = config.Fs.CacheSize
-	//fs.entries = make([]Entry, 0, fs.maxIndex)
+	fs.tree = llrb.New()
 	return fs
 }
 
-func (fs *FileSystem) FsFile(name string, fsName string, key string, parent *Entry) *Entry {
+/*func (fs *FileSystem) FsFile(name string, fsName string, key string, parent *Entry) *Entry {
 	if fsName == "" {
 		fsName = string(RandStringBytes(kDefaultFsNameLength))
 	}
@@ -91,10 +88,11 @@ func (fs *FileSystem) WriteFileEntries() {
 		fpe.Close()
 		fp.Close()
 	}
-}
+}*/
 
-func (fs *FileSystem) ReadFileEntries() {
+func (fs *FileSystem) readFileEntries() []*Entry {
 	index := 0
+	entries := make([]*Entry, 0, 0)
 	for {
 		fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, index)
 		index++
@@ -111,10 +109,37 @@ func (fs *FileSystem) ReadFileEntries() {
 					fp.Close()
 					break
 				} else {
-					entry.Print()
-					fs.entries = append(fs.entries, entry)
+					//entry.Print()
+					entries = append(entries, entry)
 				}
 			}
 		}
 	}
+	return entries
+}
+
+func (fs *FileSystem) BuildFileTree() {
+	entries := fs.readFileEntries()
+	nodes := make([]*TreeNode, len(entries)+1)
+
+	root := &TreeNode{}
+	nodes[0] = root
+
+	for _, entry := range entries {
+		node := NewTreeNode(entry)
+		node.Parent = nodes[entry.ParentId]
+		nodes[entry.Id] = node
+		fs.tree.ReplaceOrInsert(node)
+	}
+
+	iter := func(i llrb.Item) bool {
+		n, _ := i.(*TreeNode)
+		max, _ := fs.tree.Max().(*TreeNode)
+		println(n.getFullName())
+		if n.getFullName() == max.getFullName() {
+			return false
+		}
+		return true
+	}
+	fs.tree.AscendGreaterOrEqual(fs.tree.Min(), iter)
 }

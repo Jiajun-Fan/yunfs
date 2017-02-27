@@ -14,7 +14,6 @@ func main() {
 		Fatal("no configuration file found, a template is generated at '~/.yunfs/yunfs.json'\n")
 	} else {
 		fs := NewFileSystem(config)
-		fs.ReadFileEntries()
-		//fs.WriteFileEntries()
+		fs.BuildFileTree()
 	}
 }
