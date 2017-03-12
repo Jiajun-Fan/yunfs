@@ -7,10 +7,12 @@ import (
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 	"io"
 	"os"
+	"strconv"
 )
 
 type Oss interface {
 	Stat(fname string) error
+	Size(fname string) uint64
 	Create(name string) (io.WriteCloser, error)
 	Open(name string) (io.ReadCloser, error)
 }
@@ -29,6 +31,10 @@ func (l *LocalOss) Stat(fname string) error {
 	fn := fmt.Sprintf("%s/%s", l.Base, fname)
 	_, err := os.Stat(fn)
 	return err
+}
+
+func (l *LocalOss) Size(fname string) uint64 {
+	return 0
 }
 
 func (l *LocalOss) Create(name string) (io.WriteCloser, error) {
@@ -107,6 +113,16 @@ func (a *AliyunOss) Stat(fname string) error {
 		return nil
 	} else {
 		return errors.New("no such file")
+	}
+}
+
+func (a *AliyunOss) Size(fname string) uint64 {
+	if head, err := a.bucket.GetObjectMeta(fname); err == nil {
+		println(head["Content-Length"])
+		v, _ := strconv.Atoi(head["Content-Length"][0])
+		return uint64(v)
+	} else {
+		return 0
 	}
 }
 

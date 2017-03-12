@@ -77,6 +77,7 @@ func (e *Entry) Print() {
 
 func (e *Entry) Stat(out *fuse.Attr) {
 	out.Mode = fuse.S_IFREG | 0444
+	out.Size = e.fs.oss.Size(e.FsName)
 }
 
 func (e *Entry) Data() (data []byte) {
