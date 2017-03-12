@@ -26,9 +26,10 @@ type EncryptConfig struct {
 }
 
 type FileSystemConfig struct {
-	BlockSize int    `json:"block_size"`
-	CacheSize int    `json:"cache_size"`
-	Prefix    string `json:"meta_prefix"`
+	BlockSize  int    `json:"block_size"`
+	CacheSize  int    `json:"cache_size"`
+	Prefix     string `json:"meta_prefix"`
+	MountPoint string `json:"mount_point"`
 }
 
 type Config struct {

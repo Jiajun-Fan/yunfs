@@ -1,8 +1,6 @@
 package main
 
 import (
-	//"fmt"
-	//"os"
 	"math/rand"
 	"time"
 )
@@ -14,6 +12,12 @@ func main() {
 		Fatal("no configuration file found, a template is generated at '~/.yunfs/yunfs.json'\n")
 	} else {
 		fs := NewFileSystem(config)
-		fs.BuildFileTree()
+		//fs.readFileEntries()
+		//fs.WriteFileEntries()
+		if server, err1 := fs.Mount(); err1 != nil {
+			Fatal(err1.Error())
+		} else {
+			server.Serve()
+		}
 	}
 }

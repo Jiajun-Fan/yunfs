@@ -4,7 +4,10 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"io"
+	"io/ioutil"
 )
 
 const (
@@ -12,16 +15,17 @@ const (
 )
 
 type NodeInfo struct {
-	Key    string
-	Name   string
-	FsName string
-}
-
-type Entry struct {
 	Id       int
 	ParentId int
 	Dir      bool
+	Key      string
+	Name     string
+	FsName   string
+}
+
+type Entry struct {
 	NodeInfo
+	memNode
 }
 
 func NewDir(id int, name string, parent *Entry) (*Entry, error) {
@@ -33,10 +37,10 @@ func NewFile(id int, name string, fsName string, key string, parent *Entry) (*En
 }
 
 func newEntry(id int, name string, fsName string, key string, parent *Entry, dir bool) (*Entry, error) {
-	entry := Entry{}
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")
 	}
+	entry := Entry{NodeInfo{id, 0, dir, key, name, fsName}, memNode{nodefs.NewDefaultNode(), nil, nil}}
 
 	entry.Id = id
 	if parent == nil {
@@ -69,4 +73,20 @@ func (e *Entry) Print() {
 		fmt.Printf("Id: %d, ParentId: %d, Name: %s, FsName: %s, Key %s\n",
 			e.Id, e.ParentId, e.Name, e.FsName, e.Key)
 	}
+}
+
+func (e *Entry) Stat(out *fuse.Attr) {
+	out.Mode = fuse.S_IFREG | 0444
+}
+
+func (e *Entry) Data() (data []byte) {
+	fp, err := e.fs.oss.Open(e.FsName)
+	if err != nil {
+		return nil
+	}
+	fpd := MakeDecryptor(e.fs.config.Enc, fp)
+	data, _ = ioutil.ReadAll(fpd)
+	fpd.Close()
+	fp.Close()
+	return
 }

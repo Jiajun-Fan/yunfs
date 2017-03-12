@@ -3,8 +3,10 @@ package main
 import (
 	"encoding/gob"
 	"fmt"
-	"github.com/petar/GoLLRB/llrb"
+	"github.com/hanwen/go-fuse/fuse"
+	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"io"
+	"time"
 )
 
 const kDefaultFsNameLength = 16
@@ -14,59 +16,22 @@ type FileSystem struct {
 	config  *Config
 	oss     Oss
 	entryId int
-	tree    *llrb.LLRB
+	Name    string
+	entries []*Entry
 }
 
 func NewFileSystem(config *Config) *FileSystem {
 	fs := &FileSystem{}
 	fs.config = config
 	fs.oss = MakeOss(config.Oss)
-	fs.tree = llrb.New()
 	return fs
 }
 
-/*func (fs *FileSystem) FsFile(name string, fsName string, key string, parent *Entry) *Entry {
-	if fsName == "" {
-		fsName = string(RandStringBytes(kDefaultFsNameLength))
-	}
-	if key == "" {
-		key = string(RandStringBytes(kDefaultFsKeyLength))
-	}
-	fs.entryId++
-	if f, err := NewFile(fs.entryId, name, fsName, key, parent); err != nil {
-		panic(err.Error())
-	} else {
-		fs.entries = append(fs.entries, f)
-		if len(fs.entries) != fs.entryId {
-			panic("append error")
-		}
-		return f
-	}
-	return nil
-}
-
-func (fs *FileSystem) FsDir(name string, fsName string, parent *Entry) *Entry {
-	if fsName == "" {
-		fsName = string(RandStringBytes(kDefaultFsNameLength))
-	}
-	fs.entryId++
-	if f, err := NewDir(fs.entryId, name, fsName, parent); err != nil {
-		panic(err.Error())
-	} else {
-		fs.entries = append(fs.entries, f)
-		if len(fs.entries) != fs.entryId {
-			panic("append error")
-		}
-		return f
-	}
-	return nil
-}*/
-
-func (fs *FileSystem) WriteFileEntries(entries []*Entry) {
+func (fs *FileSystem) WriteFileEntries() {
 	var fp io.WriteCloser
 	var fpe Encryptor
 	var enc *gob.Encoder
-	for i := 0; i < len(entries); i++ {
+	for i := 0; i < len(fs.entries); i++ {
 		if i%fs.config.Fs.BlockSize == 0 {
 			fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, i/fs.config.Fs.BlockSize)
 			println(fName)
@@ -78,10 +43,9 @@ func (fs *FileSystem) WriteFileEntries(entries []*Entry) {
 			}
 			fp, _ = fs.oss.Create(fName)
 			fpe = MakeEncryptor(fs.config.Enc, fp)
-			fmt.Printf("%+v\n", fs.config.Enc)
 			enc = gob.NewEncoder(fpe)
 		}
-		entry := entries[i]
+		entry := fs.entries[i]
 		enc.Encode(entry)
 	}
 	if fpe != nil {
@@ -90,9 +54,8 @@ func (fs *FileSystem) WriteFileEntries(entries []*Entry) {
 	}
 }
 
-func (fs *FileSystem) readFileEntries() []*Entry {
+func (fs *FileSystem) readFileEntries() {
 	index := 0
-	entries := make([]*Entry, 0, 0)
 	for {
 		fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, index)
 		index++
@@ -110,11 +73,14 @@ func (fs *FileSystem) readFileEntries() []*Entry {
 					break
 				} else {
 					if entry.Id != 0 {
-						entries = append(entries, entry)
+						entry.memNode = memNode{nodefs.NewDefaultNode(), entry, fs}
+						fs.entries = append(fs.entries, entry)
 						if fs.entryId+1 != entry.Id {
 							panic("entry ID error")
 						}
+						entry.Print()
 						fs.entryId = entry.Id
+						entry.fs = fs
 					} else {
 						panic("root should not in database")
 					}
@@ -122,31 +88,37 @@ func (fs *FileSystem) readFileEntries() []*Entry {
 			}
 		}
 	}
-	return entries
 }
 
-func (fs *FileSystem) BuildFileTree() {
-	entries := fs.readFileEntries()
-	nodes := make([]*TreeNode, len(entries)+1)
+func (fs *FileSystem) String() string {
+	return fs.Name
+}
 
-	root := &TreeNode{}
-	nodes[0] = root
+func (fs *FileSystem) Root() nodefs.Node {
+	return fs.entries[0]
+}
 
-	for _, entry := range entries {
-		node := NewTreeNode(entry)
-		node.Parent = nodes[entry.ParentId]
-		nodes[entry.Id] = node
-		fs.tree.ReplaceOrInsert(node)
-	}
-
-	iter := func(i llrb.Item) bool {
-		n, _ := i.(*TreeNode)
-		max, _ := fs.tree.Max().(*TreeNode)
-		println(n.getFullName())
-		if n.getFullName() == max.getFullName() {
-			return false
+func (fs *FileSystem) onMount() {
+	fs.readFileEntries()
+	for _, entry := range fs.entries {
+		if entry.Id == 0 {
+			continue
 		}
-		return true
+		pentry := fs.entries[entry.ParentId]
+		println(entry.Name)
+		pentry.Inode().NewChild(entry.Name, entry.Dir, entry)
 	}
-	fs.tree.AscendGreaterOrEqual(fs.tree.Min(), iter)
+}
+
+func (fs *FileSystem) Mount() (*fuse.Server, error) {
+	root := &Entry{NodeInfo{0, 0, true, "", "", ""}, memNode{nodefs.NewDefaultNode(), nil, fs}}
+	fs.entries = append(fs.entries, root)
+	opts := &nodefs.Options{
+		AttrTimeout:  time.Duration(float64(time.Second)),
+		EntryTimeout: time.Duration(float64(time.Second)),
+		Debug:        true,
+	}
+	println(fs.config.Fs.MountPoint)
+	server, _, err := nodefs.MountRoot(fs.config.Fs.MountPoint, root, opts)
+	return server, err
 }
