@@ -12,9 +12,9 @@ const (
 )
 
 type NodeInfo struct {
-	Key      string
-	Name     string
-	FsName   string
+	Key    string
+	Name   string
+	FsName string
 }
 
 type Entry struct {
@@ -24,8 +24,8 @@ type Entry struct {
 	NodeInfo
 }
 
-func NewDir(id int, name string, fsName string, parent *Entry) (*Entry, error) {
-	return newEntry(id, name, fsName, "", parent, true)
+func NewDir(id int, name string, parent *Entry) (*Entry, error) {
+	return newEntry(id, name, "", "", parent, true)
 }
 
 func NewFile(id int, name string, fsName string, key string, parent *Entry) (*Entry, error) {

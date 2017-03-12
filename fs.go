@@ -4,7 +4,7 @@ import (
 	"encoding/gob"
 	"fmt"
 	"github.com/petar/GoLLRB/llrb"
-	//"io"
+	"io"
 )
 
 const kDefaultFsNameLength = 16
@@ -60,13 +60,13 @@ func (fs *FileSystem) FsDir(name string, fsName string, parent *Entry) *Entry {
 		return f
 	}
 	return nil
-}
+}*/
 
-func (fs *FileSystem) WriteFileEntries() {
+func (fs *FileSystem) WriteFileEntries(entries []*Entry) {
 	var fp io.WriteCloser
 	var fpe Encryptor
 	var enc *gob.Encoder
-	for i := 0; i < len(fs.entries); i++ {
+	for i := 0; i < len(entries); i++ {
 		if i%fs.config.Fs.BlockSize == 0 {
 			fName := fmt.Sprintf("%s_%d", fs.config.Fs.Prefix, i/fs.config.Fs.BlockSize)
 			println(fName)
@@ -81,14 +81,14 @@ func (fs *FileSystem) WriteFileEntries() {
 			fmt.Printf("%+v\n", fs.config.Enc)
 			enc = gob.NewEncoder(fpe)
 		}
-		entry := fs.entries[i]
+		entry := entries[i]
 		enc.Encode(entry)
 	}
 	if fpe != nil {
 		fpe.Close()
 		fp.Close()
 	}
-}*/
+}
 
 func (fs *FileSystem) readFileEntries() []*Entry {
 	index := 0
@@ -109,8 +109,15 @@ func (fs *FileSystem) readFileEntries() []*Entry {
 					fp.Close()
 					break
 				} else {
-					//entry.Print()
-					entries = append(entries, entry)
+					if entry.Id != 0 {
+						entries = append(entries, entry)
+						if fs.entryId+1 != entry.Id {
+							panic("entry ID error")
+						}
+						fs.entryId = entry.Id
+					} else {
+						panic("root should not in database")
+					}
 				}
 			}
 		}
