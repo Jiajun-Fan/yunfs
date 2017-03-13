@@ -14,18 +14,15 @@ const (
 	kMaxEntryNumberInFile = 1024
 )
 
-type NodeInfo struct {
+type Entry struct {
 	Id       int
 	ParentId int
 	Dir      bool
 	Key      string
 	Name     string
 	FsName   string
-}
-
-type Entry struct {
-	NodeInfo
-	memNode
+	fs       *FileSystem
+	nodefs.Node
 }
 
 func NewDir(id int, name string, parent *Entry) (*Entry, error) {
@@ -40,7 +37,7 @@ func newEntry(id int, name string, fsName string, key string, parent *Entry, dir
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")
 	}
-	entry := Entry{NodeInfo{id, 0, dir, key, name, fsName}, memNode{nodefs.NewDefaultNode(), nil, nil}}
+	entry := Entry{id, 0, dir, key, name, fsName, nil, nil}
 
 	entry.Id = id
 	if parent == nil {
@@ -90,4 +87,45 @@ func (e *Entry) Data() (data []byte) {
 	fpd.Close()
 	fp.Close()
 	return
+}
+
+func (n *Entry) OnMount(c *nodefs.FileSystemConnector) {
+	n.fs.onMount()
+}
+
+func (n *Entry) OpenDir(context *fuse.Context) (stream []fuse.DirEntry, code fuse.Status) {
+	children := n.Inode().Children()
+	stream = make([]fuse.DirEntry, 0, len(children))
+	for k, v := range children {
+		mode := fuse.S_IFREG | 0666
+		if v.IsDir() {
+			mode = fuse.S_IFDIR | 0777
+		}
+		stream = append(stream, fuse.DirEntry{
+			Name: k,
+			Mode: uint32(mode),
+		})
+	}
+	return stream, fuse.OK
+}
+
+func (n *Entry) Open(flags uint32, context *fuse.Context) (fuseFile nodefs.File, code fuse.Status) {
+	if flags&fuse.O_ANYWRITE != 0 {
+		return nil, fuse.EPERM
+	}
+
+	return nodefs.NewDataFile(n.Data()), fuse.OK
+}
+
+func (n *Entry) Deletable() bool {
+	return false
+}
+
+func (n *Entry) GetAttr(out *fuse.Attr, file nodefs.File, context *fuse.Context) fuse.Status {
+	if n.Inode().IsDir() {
+		out.Mode = fuse.S_IFDIR | 0777
+		return fuse.OK
+	}
+	n.Stat(out)
+	return fuse.OK
 }
