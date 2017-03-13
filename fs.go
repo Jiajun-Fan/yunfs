@@ -73,7 +73,8 @@ func (fs *FileSystem) readFileEntries() {
 					break
 				} else {
 					if entry.Id != 0 {
-						entry.memNode = memNode{nodefs.NewDefaultNode(), entry, fs}
+						entry.fs = fs
+						entry.Node = nodefs.NewDefaultNode()
 						fs.entries = append(fs.entries, entry)
 						if fs.entryId+1 != entry.Id {
 							panic("entry ID error")
@@ -111,12 +112,12 @@ func (fs *FileSystem) onMount() {
 }
 
 func (fs *FileSystem) Mount() (*fuse.Server, error) {
-	root := &Entry{NodeInfo{0, 0, true, "", "", ""}, memNode{nodefs.NewDefaultNode(), nil, fs}}
+	root := &Entry{0, 0, true, "", "", "", fs, nil}
 	fs.entries = append(fs.entries, root)
 	opts := &nodefs.Options{
 		AttrTimeout:  time.Duration(float64(time.Second)),
 		EntryTimeout: time.Duration(float64(time.Second)),
-		Debug:        true,
+		Debug:        false,
 	}
 	println(fs.config.Fs.MountPoint)
 	server, _, err := nodefs.MountRoot(fs.config.Fs.MountPoint, root, opts)
