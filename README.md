@@ -5,8 +5,8 @@
 Features
 ===========
 * It's designed for achieving large scale of files.
-* Everything on cloud, we can get your file system as long as lng you can access the cloud.
-* Supporting multiple cloud storage provides (Aliyun OSS, Amazon S3, ...).
+* Everything on cloud, one can get his file system as long as he can access the cloud.
+* Supporting multiple cloud service provides (Aliyun OSS, Amazon S3, ...).
 * All the files are encrypted.
 * Advanced cache system.
 * Support Linux & OSX.
