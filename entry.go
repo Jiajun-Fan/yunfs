@@ -14,9 +14,6 @@ const (
 	kMaxEntryNumberInFile = 1024
 )
 
-type NodeInfo struct {
-}
-
 type Entry struct {
 	Id       int
 	ParentId int
@@ -26,6 +23,7 @@ type Entry struct {
 	FsName   string
 	fs       *FileSystem
 	nodefs.Node
+	size uint64
 }
 
 func NewDir(id int, name string, parent *Entry) (*Entry, error) {
@@ -40,7 +38,7 @@ func newEntry(id int, name string, fsName string, key string, parent *Entry, dir
 	if parent != nil && parent.Dir == false {
 		return nil, errors.New("parent entry can't be file type")
 	}
-	entry := Entry{id, 0, dir, key, name, fsName, nil, nil}
+	entry := Entry{id, 0, dir, key, name, fsName, nil, nil, 0}
 
 	entry.Id = id
 	if parent == nil {
@@ -77,7 +75,12 @@ func (e *Entry) Print() {
 
 func (e *Entry) Stat(out *fuse.Attr) {
 	out.Mode = fuse.S_IFREG | 0444
-	out.Size = e.fs.oss.Size(e.FsName)
+	if e.size != 0 {
+		out.Size = e.fs.oss.Size(e.FsName)
+		e.size = out.Size
+	} else {
+		out.Size = e.size
+	}
 }
 
 func (e *Entry) Data() (data []byte) {
@@ -87,6 +90,14 @@ func (e *Entry) Data() (data []byte) {
 	}
 	fpd := MakeDecryptor(e.fs.config.Enc, fp)
 	data, _ = ioutil.ReadAll(fpd)
+
+	out := fuse.Attr{}
+	e.Stat(&out)
+	size := int(out.Size)
+	if len(data) < size {
+		data = append(data, make([]byte, size-len(data))...)
+	}
+
 	fpd.Close()
 	fp.Close()
 	return
