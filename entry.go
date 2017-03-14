@@ -14,6 +14,9 @@ const (
 	kMaxEntryNumberInFile = 1024
 )
 
+type NodeInfo struct {
+}
+
 type Entry struct {
 	Id       int
 	ParentId int
