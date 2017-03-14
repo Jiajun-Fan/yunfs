@@ -112,7 +112,7 @@ func (fs *FileSystem) onMount() {
 }
 
 func (fs *FileSystem) Mount() (*fuse.Server, error) {
-	root := &Entry{0, 0, true, "", "", "", fs, nodefs.NewDefaultNode()}
+	root := &Entry{0, 0, true, "", "", "", fs, nodefs.NewDefaultNode(), 0}
 	fs.entries = append(fs.entries, root)
 	opts := &nodefs.Options{
 		AttrTimeout:  time.Duration(float64(time.Second)),
