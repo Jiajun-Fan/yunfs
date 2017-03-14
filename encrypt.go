@@ -83,31 +83,29 @@ func NewAesEncryptor(key []byte, writer io.Writer) (Encryptor, error) {
 	return enc, nil
 }
 
-func (dec *AesDecryptor) Read(output []byte) (int, error) {
+func (dec *AesDecryptor) Read(output []byte) (i int, errRet error) {
 
 	readSize := (len(output) / aes.BlockSize * aes.BlockSize) - dec.Buffer.Len()
 	readBuff := make([]byte, readSize)
 
-	var errRet error
-	i := 0
 	for {
 		if i >= readSize {
 			break
 		}
 		bs, err := dec.Reader.Read(readBuff[i:])
+		errRet = err
+		i += bs
 		if err != nil {
 			if err == io.EOF {
-				errRet = err
 				break
 			}
 			// return any error other than io.EOF
-			return 0, err
+			return
 		}
 		if bs == 0 {
 			// if currently there is no available byte, return without blocking the process
 			break
 		}
-		i += bs
 	}
 
 	if i > readSize {
@@ -122,11 +120,7 @@ func (dec *AesDecryptor) Read(output []byte) (int, error) {
 	dec.Buffer.Read(decBuff)
 
 	dec.Mode.CryptBlocks(output[:decSize], decBuff)
-	if decSize != 0 {
-		return decSize, nil
-	} else {
-		return 0, errRet
-	}
+	return
 }
 
 func (dec *AesDecryptor) Close() (err error) {
