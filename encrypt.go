@@ -98,9 +98,10 @@ func (dec *AesDecryptor) Read(output []byte) (i int, errRet error) {
 		if err != nil {
 			if err == io.EOF {
 				break
+			} else {
+				i = 0
+				return
 			}
-			// return any error other than io.EOF
-			return
 		}
 		if bs == 0 {
 			// if currently there is no available byte, return without blocking the process
@@ -120,6 +121,9 @@ func (dec *AesDecryptor) Read(output []byte) (i int, errRet error) {
 	dec.Buffer.Read(decBuff)
 
 	dec.Mode.CryptBlocks(output[:decSize], decBuff)
+	if decSize != 0 {
+		errRet = nil
+	}
 	return
 }
 

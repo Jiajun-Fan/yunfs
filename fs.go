@@ -79,7 +79,6 @@ func (fs *FileSystem) readFileEntries() {
 						if fs.entryId+1 != entry.Id {
 							panic("entry ID error")
 						}
-						entry.Print()
 						fs.entryId = entry.Id
 						entry.fs = fs
 					} else {
@@ -106,7 +105,6 @@ func (fs *FileSystem) onMount() {
 			continue
 		}
 		pentry := fs.entries[entry.ParentId]
-		println(entry.Name)
 		pentry.Inode().NewChild(entry.Name, entry.Dir, entry)
 	}
 }

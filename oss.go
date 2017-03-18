@@ -118,7 +118,6 @@ func (a *AliyunOss) Stat(fname string) error {
 
 func (a *AliyunOss) Size(fname string) uint64 {
 	if head, err := a.bucket.GetObjectMeta(fname); err == nil {
-		println(head["Content-Length"])
 		v, _ := strconv.Atoi(head["Content-Length"][0])
 		return uint64(v)
 	} else {

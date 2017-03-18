@@ -75,7 +75,7 @@ func (e *Entry) Print() {
 
 func (e *Entry) Stat(out *fuse.Attr) {
 	out.Mode = fuse.S_IFREG | 0444
-	if e.size != 0 {
+	if e.size == 0 {
 		out.Size = e.fs.oss.Size(e.FsName)
 		e.size = out.Size
 	} else {
