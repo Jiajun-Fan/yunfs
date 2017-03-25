@@ -33,14 +33,18 @@ type FileSystemConfig struct {
 }
 
 type Config struct {
-	Oss OssConfig        `json:"oss"`
-	Enc EncryptConfig    `json:"encrypt"`
-	Fs  FileSystemConfig `json:"file_system"`
+	Oss   OssConfig        `json:"oss"`
+	Cache OssConfig        `json:"cache"`
+	Enc   EncryptConfig    `json:"encrypt"`
+	Fs    FileSystemConfig `json:"file_system"`
 }
 
 func DefaultConfig() *Config {
 	config := &Config{}
 	config.Oss.Type = "local"
+	config.Oss.EndPoint = ""
+
+	config.Cache.Type = "local"
 	config.Oss.EndPoint = ""
 
 	config.Enc.Type = "aes"

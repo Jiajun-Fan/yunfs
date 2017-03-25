@@ -15,6 +15,7 @@ const kDefaultFsKeyLength = 16
 type FileSystem struct {
 	config  *Config
 	oss     Oss
+	cache   Oss
 	entryId int
 	Name    string
 	entries []*Entry
@@ -24,6 +25,7 @@ func NewFileSystem(config *Config) *FileSystem {
 	fs := &FileSystem{}
 	fs.config = config
 	fs.oss = MakeOss(config.Oss)
+	fs.cache = MakeOss(config.Cache)
 	return fs
 }
 
