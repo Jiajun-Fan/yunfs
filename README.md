@@ -27,7 +27,7 @@ vim ~/.yunfs/yunfs.json # edit configuration
 ./yunfs
 ```
 
-configuration
+Configuration
 ===============
 ```
 {
