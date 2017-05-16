@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"github.com/segmentio/go-prompt"
 	"io/ioutil"
 	"os"
 )
@@ -39,41 +40,17 @@ type Config struct {
 	Fs    FileSystemConfig `json:"file_system"`
 }
 
-func DefaultConfig() *Config {
+func NewConfig() *Config {
+
+	fileName, err := checkConfigFile()
+
 	config := &Config{}
-	config.Oss.Type = "local"
-	config.Oss.EndPoint = ""
-
-	config.Cache.Type = "local"
-	config.Oss.EndPoint = ""
-
-	config.Enc.Type = "aes"
-	config.Enc.Key = "abcdefg"
-
-	config.Fs.BlockSize = 1024 * 16
-	config.Fs.Prefix = "y0k99t"
-	return config
-}
-
-func NewConfig() (*Config, error) {
-	home := os.Getenv("HOME")
-	defaultConfig := DefaultConfig()
-	if home == "" {
-		return defaultConfig, ErrorNoConfig
-	}
-
-	dirName := home + "/" + kConfigDirName
-	if _, err := os.Stat(dirName); err != nil {
-		os.Mkdir(dirName, 0755)
-	}
-
-	fileName := dirName + "/" + kConfigFileName
-	if _, err := os.Stat(fileName); err != nil {
+	if err != nil {
 		fp, _ := os.Create(fileName)
 		defer fp.Close()
-
-		if buff, err1 := json.MarshalIndent(defaultConfig, "", "    "); err1 != nil {
-			panic(err1.Error())
+		configWizard(config)
+		if buff, err1 := json.MarshalIndent(config, "", "    "); err1 != nil {
+			Fatal(err1.Error())
 		} else {
 			fp.Write(buff)
 		}
@@ -81,14 +58,51 @@ func NewConfig() (*Config, error) {
 		fp, _ := os.Open(fileName)
 		defer fp.Close()
 		if buff, err1 := ioutil.ReadAll(fp); err1 != nil {
-			panic(err1.Error())
+			Fatal(err1.Error())
 		} else {
-			config := &Config{}
 			if err2 := json.Unmarshal(buff, config); err2 != nil {
-				panic(err2.Error())
+				Fatal(err2.Error())
 			}
-			return config, nil
 		}
 	}
-	return defaultConfig, ErrorNoConfig
+	return config
+}
+
+func configWizardOss(config *Config) {
+	oss_types := []string{"local", "aliyun", "s3"}
+	index := prompt.Choose("please choose storage type", oss_types)
+	config.Oss.Type = oss_types[index]
+
+	if config.Oss.Type != "local" {
+		config.Oss.Key = prompt.StringRequired("please specify APP key")
+		config.Oss.Secret = prompt.StringRequired("please specify APP Secret")
+		config.Oss.Bucket = prompt.StringRequired("please specify storage bucket")
+		config.Oss.EndPoint = prompt.StringRequired("please specify storage endpoint")
+	} else {
+		config.Oss.Bucket = prompt.StringRequired("please specify storage dir")
+	}
+}
+
+func configWizard(config *Config) {
+	configWizardOss(config)
+}
+
+func checkConfigDir() (dirName string) {
+	home := os.Getenv("HOME")
+	if home == "" {
+		home = "~"
+	}
+
+	dirName = home + "/" + kConfigDirName
+	if _, err := os.Stat(dirName); err != nil {
+		os.Mkdir(dirName, 0755)
+	}
+
+	return
+}
+
+func checkConfigFile() (fileName string, err error) {
+	fileName = checkConfigDir() + "/" + kConfigFileName
+	_, err = os.Stat(fileName)
+	return
 }
