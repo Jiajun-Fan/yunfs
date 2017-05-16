@@ -22,8 +22,6 @@ Usage
 ```
 git clone https://github.com/Jiajun-Fan/Yunfs
 go build github.com/Jiajun-Fan/yunfs
-./yunfs # for the first time running yunfs, it creates a configuration template.
-vim ~/.yunfs/yunfs.json # edit configuration
 ./yunfs
 ```
 
